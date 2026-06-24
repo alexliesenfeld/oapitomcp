@@ -1,0 +1,5 @@
+.idea/
+*.iml
+
+# Ignore accidental nested checkouts.
+/oapitomcp/

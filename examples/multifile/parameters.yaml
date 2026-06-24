@@ -1,0 +1,14 @@
+openapi: 3.0.3
+info:
+  title: Shared parameters
+  version: 1.0.0
+paths: {}
+components:
+  parameters:
+    PetID:
+      name: petId
+      in: path
+      required: true
+      description: Pet identifier.
+      schema:
+        type: string

@@ -1,0 +1,63 @@
+openapi: 3.1.0
+info:
+  title: Filtering Example API
+  version: 1.0.0
+servers:
+  - url: https://api.example.test
+paths:
+  /users:
+    get:
+      operationId: listUsers
+      summary: List users
+      tags: [users]
+      responses:
+        '200':
+          description: User collection
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  users:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        email:
+                          type: string
+    post:
+      operationId: createUser
+      summary: Create user
+      tags: [users]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        '201':
+          description: Created
+  /admin/users:
+    delete:
+      operationId: deleteAllUsers
+      summary: Delete all users
+      tags: [admin]
+      responses:
+        '204':
+          description: Deleted
+  /debug/status:
+    get:
+      operationId: debugStatus
+      summary: Internal debug status
+      tags: [debug, internal]
+      responses:
+        '200':
+          description: Debug status

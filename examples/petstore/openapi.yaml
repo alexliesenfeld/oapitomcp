@@ -1,0 +1,85 @@
+openapi: 3.1.0
+info:
+  title: Example Petstore
+  version: 1.0.0
+  description: A compact real-document fixture for the goapitomcp examples and tests.
+servers:
+  - url: http://localhost:8080/api
+paths:
+  /pets:
+    get:
+      operationId: listPets
+      summary: List pets
+      description: Returns a paged list of pets.
+      tags: [pets]
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum number of pets to return.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: Pet page
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [pets]
+                properties:
+                  pets:
+                    type: array
+                    description: Pets on this page.
+                    items:
+                      $ref: '#/components/schemas/Pet'
+                  nextPage:
+                    type: string
+                    description: URL to the next page, if any.
+    post:
+      operationId: createPet
+      summary: Create pet
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                  description: Pet name.
+                tag:
+                  type: string
+                  description: Optional pet tag.
+      responses:
+        '201':
+          description: Created pet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+  schemas:
+    Pet:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: integer
+          description: Unique pet identifier.
+        name:
+          type: string
+          description: Pet name.
+        tag:
+          type: string
+          description: Optional pet tag.

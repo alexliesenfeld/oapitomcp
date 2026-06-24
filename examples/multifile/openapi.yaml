@@ -1,0 +1,20 @@
+openapi: 3.0.3
+info:
+  title: Multi-file Pet API
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080/api
+paths:
+  /pets/{petId}:
+    get:
+      operationId: getPetByID
+      summary: Get pet by ID
+      parameters:
+        - $ref: './parameters.yaml#/components/parameters/PetID'
+      responses:
+        '200':
+          description: Pet response
+          content:
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/components/schemas/Pet'

@@ -24,11 +24,14 @@ type Config struct {
 	BaseURL             *url.URL
 	HTTPClient          *http.Client
 	StaticHeaders       http.Header
+	ForwardHeaders      []string
 	UseSecurityDefaults bool
 	SkipValidation      bool
 	BeforeRequest       func(context.Context, OperationContext, *http.Request) error
 	Logger              *slog.Logger
 }
+
+type forwardedHeadersContextKey struct{}
 
 // OperationFilter controls which OpenAPI operations become MCP tools.
 //
@@ -132,11 +135,30 @@ func NewHandler(ctx context.Context, cfg Config) (http.Handler, error) {
 	if err != nil {
 		return nil, err
 	}
-	return mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server {
+
+	handler := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server {
 		return server
 	}, &mcp.StreamableHTTPOptions{
 		Stateless:    true,
 		JSONResponse: true,
 		Logger:       cfg.Logger,
+	})
+	if len(cfg.ForwardHeaders) == 0 {
+		return handler, nil
+	}
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		headers := make(http.Header, len(cfg.ForwardHeaders))
+		for _, name := range cfg.ForwardHeaders {
+			values := r.Header.Values(name)
+			if len(values) == 0 {
+				continue
+			}
+			headers[http.CanonicalHeaderKey(name)] = append([]string(nil), values...)
+		}
+		if len(headers) > 0 {
+			r = r.WithContext(context.WithValue(r.Context(), forwardedHeadersContextKey{}, headers))
+		}
+		handler.ServeHTTP(w, r)
 	}), nil
 }

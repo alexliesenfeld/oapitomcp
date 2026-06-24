@@ -25,10 +25,7 @@ mcpHandler, err := goapitomcp.NewHandler(context.Background(), goapitomcp.Config
     StaticHeaders: http.Header{
         "X-Service": []string{"my-app"},
     },
-    BeforeRequest: func(ctx context.Context, op goapitomcp.OperationContext, r *http.Request) error {
-        r.Header.Set("Authorization", "Bearer "+tokenFor(ctx))
-        return nil
-    },
+    ForwardHeaders: []string{"Authorization"},
 })
 if err != nil {
     log.Fatal(err)
@@ -102,5 +99,6 @@ mux.Handle("/mcp", goapitomcp.WithCORS(mcpHandler, goapitomcp.CORSOptions{
 - Operation filtering by path, wildcard path pattern, operation ID, method, tag, and `x-internal`.
 - Path, query, header, cookie, JSON body, and form body request mapping.
 - Tool-name prefixing, response-derived output schemas, structured MCP results, and response field documentation for agents.
+- Explicit forwarding of selected inbound MCP request headers to upstream API requests.
 - OpenAPI security scheme metadata plus opt-in default credential application.
 - Optional CORS middleware for embedded HTTP usage.

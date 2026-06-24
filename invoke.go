@@ -36,6 +36,10 @@ func (c *Catalog) callOperation(ctx context.Context, op *Operation, req *mcp.Cal
 		return toolError(0, "text/plain", err.Error()), nil
 	}
 
+	if headers, _ := ctx.Value(forwardedHeadersContextKey{}).(http.Header); len(headers) > 0 {
+		applyHeaders(httpReq, headers)
+	}
+
 	if c.cfg.BeforeRequest != nil {
 		if err := c.cfg.BeforeRequest(ctx, OperationContext{
 			ToolName:    op.ToolName,
@@ -155,7 +159,7 @@ func (c *Catalog) buildHTTPRequest(ctx context.Context, op *Operation, args map[
 		httpReq.Header.Set("Content-Type", contentType)
 	}
 	httpReq.Header.Set("Accept", "application/json, */*")
-	applyStaticHeaders(httpReq, c.cfg.StaticHeaders)
+	applyHeaders(httpReq, c.cfg.StaticHeaders)
 	c.applySecurityDefaults(httpReq, op)
 	return httpReq, nil
 }
@@ -247,7 +251,7 @@ func requestBody(op *Operation, args map[string]any) (io.Reader, string, error) 
 	return bytes.NewReader(data), op.RequestBody.MediaType, nil
 }
 
-func applyStaticHeaders(req *http.Request, headers http.Header) {
+func applyHeaders(req *http.Request, headers http.Header) {
 	for name, values := range headers {
 		req.Header.Del(name)
 		for _, value := range values {

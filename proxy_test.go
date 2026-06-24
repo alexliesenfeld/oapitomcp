@@ -117,6 +117,56 @@ paths:
 	}
 }
 
+func TestMCPHandlerForwardsConfiguredHeaders(t *testing.T) {
+	ctx := context.Background()
+	var sawAuth bool
+	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") == "Bearer forwarded-token" {
+			sawAuth = true
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
+	}))
+	defer backend.Close()
+
+	handler, err := NewHandler(ctx, Config{
+		Spec:           strings.NewReader(simpleGetSpec()),
+		BaseURL:        mustParseURL(t, backend.URL),
+		ForwardHeaders: []string{"Authorization"},
+	})
+	if err != nil {
+		t.Fatalf("NewHandler() error = %v", err)
+	}
+	mcpServer := httptest.NewServer(handler)
+	defer mcpServer.Close()
+
+	client := mcp.NewClient(&mcp.Implementation{Name: "test-client", Version: "1.0.0"}, nil)
+	session, err := client.Connect(ctx, &mcp.StreamableClientTransport{
+		Endpoint: mcpServer.URL,
+		HTTPClient: &http.Client{
+			Transport: headerTransport{
+				headers: http.Header{"Authorization": []string{"Bearer forwarded-token"}},
+				base:    http.DefaultTransport,
+			},
+		},
+	}, nil)
+	if err != nil {
+		t.Fatalf("Connect() error = %v", err)
+	}
+	defer session.Close()
+
+	result, err := session.CallTool(ctx, &mcp.CallToolParams{Name: "getStatus"})
+	if err != nil {
+		t.Fatalf("CallTool() error = %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("CallTool() IsError = true")
+	}
+	if !sawAuth {
+		t.Fatalf("backend did not see forwarded Authorization header")
+	}
+}
+
 func TestCallOperationPostsJSONBody(t *testing.T) {
 	var gotBody map[string]any
 	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -478,6 +528,27 @@ func mustParseURL(t *testing.T, raw string) *url.URL {
 		t.Fatal(err)
 	}
 	return u
+}
+
+type headerTransport struct {
+	headers http.Header
+	base    http.RoundTripper
+}
+
+func (t headerTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	cloned := req.Clone(req.Context())
+	for name, values := range t.headers {
+		cloned.Header.Del(name)
+		for _, value := range values {
+			cloned.Header.Add(name, value)
+		}
+	}
+
+	base := t.base
+	if base == nil {
+		base = http.DefaultTransport
+	}
+	return base.RoundTrip(cloned)
 }
 
 func simpleGetSpec() string {
